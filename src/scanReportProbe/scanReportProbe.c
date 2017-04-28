@@ -225,7 +225,9 @@ int main(int argc,char **argv)
 	server_url=URL;
 	printf("server_url set: %s\n",server_url);
 	
-	printf("Interface: %s\n", dev); 
+	printf("Interface: %s\n", dev);
+
+	printf("filter exp :%s\n",filter_exp);
 
 	if(dev == NULL) {
 		fprintf(stderr, "%s\n", errbuf);
