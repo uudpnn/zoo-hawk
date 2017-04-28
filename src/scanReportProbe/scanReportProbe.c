@@ -14,6 +14,7 @@
 #include "radiotap_iter.h"
 #include "handler_config.h"  //read /etc/my_app_name/config_name.conf
 #include "cJSON.h"
+#include "curl_handler.h"
 int global = 0;
 int CH;
 int RSSI;
@@ -141,16 +142,18 @@ int cjson_struts_init(){
     cJSON_AddNumberToObject(pJsonRoot, "Db", RSSI);
     cJSON_AddNumberToObject(pJsonRoot, "CH", CH);
     //cJSON_AddBoolToObject(pJsonRoot, "bool", 1);
-    char * p = cJSON_Print(pJsonRoot);
+    data_fields  = cJSON_Print(pJsonRoot);
 
-    if(NULL == p)
+    if(NULL == data_fields)
     {
         //convert json list to string faild, exit
         //because sub json pSubJson han been add to pJsonRoot, so just delete pJsonRoot, if you also delete pSubJson, it will coredump, and error is : double free
         cJSON_Delete(pJsonRoot);
         return 1;
     }
-    printf("%s\n", p);
+    printf("%s\n", data_fields);
+    cJSON_Delete(pJsonRoot);
+    free(data_fields);
     return 0;
 }
 void my_callback(u_char *args, const struct pcap_pkthdr* header, const u_char* packet)

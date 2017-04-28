@@ -1,5 +1,5 @@
 # Set the libraries to link
-LFLAGS += -lpcap -pthread -lconfig
+LFLAGS += -lpcap -pthread -lconfig -lcurl
 CFLAGS += -O2 -s -lm
 # Debug
 #CFLAGS += -g
@@ -7,7 +7,7 @@ CFLAGS += -O2 -s -lm
 # The target
 TARGET = scanReportProbe
 # Object files
-OBJECTS = scanReportProbe.o radiotap.o consumer.o cjson.o handler_config.o
+OBJECTS = scanReportProbe.o radiotap.o consumer.o cjson.o handler_config.o curl_handler.o
 
 all: $(TARGET)
 
