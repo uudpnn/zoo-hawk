@@ -2,13 +2,26 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <string.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <netinet/if_ether.h>
+#include <netinet/if_ether.h>
+#include <net/if.h>
+#include <sys/ioctl.h>
+#include <curl/curl.h>
 #include "radiotap_iter.h"
-
+#include "handler_config.h"  //read /etc/my_app_name/config_name.conf
+#include "cJSON.h"
 int global = 0;
+int CH;
+int RSSI;
+char SA[24];
+char DA[24];
+char AP_MAC[24];
+
+
 
 int print_radiotap_header_old(const u_char *Buffer, int Size){
 	// This struct is the RadioTap header: https://radiotap.org
@@ -71,9 +84,18 @@ int print_radiotap_header(const u_char *Buffer, int Size){
 	offset = iter._max_length;
 	while (!(err = ieee80211_radiotap_iterator_next(&iter))) {
 		if (iter.this_arg_index == IEEE80211_RADIOTAP_DBM_ANTSIGNAL) {
-			printf("RSSI = %i", (int)iter.this_arg[0] - 256);
-			printf("\n");
+			//printf("RSSI = %i", (int)iter.this_arg[0] - 256);
+            RSSI=(int)iter.this_arg[0] - 256;
+            //printf("RSSI=%i\n",RSSI);
+			//printf("\n");
 		}
+        if (iter.this_arg_index == IEEE80211_RADIOTAP_CHANNEL) {
+            //printf("CH = %i", (int)iter.this_arg[1]*256+iter.this_arg[0]);
+
+            CH=le16toh(*(uint16_t*)iter.this_arg);
+            //printf("CH %i",CH);
+            //printf("\n");
+        }
 	}
 
 	if (err != -ENOENT) {
@@ -89,10 +111,48 @@ void print_ethernet_header(const u_char *Buffer, int Size){
 	const u_char *destination_mac_addr;
 	destination_mac_addr = Buffer + 4;
 	source_mac_addr = Buffer + 10;
-	fprintf(stdout,"Source MAC address: %02X:%02X:%02X:%02X:%02X:%02X\n",source_mac_addr[0],source_mac_addr[1],source_mac_addr[2],source_mac_addr[3],source_mac_addr[4],source_mac_addr[5]);
-	fprintf(stdout,"Destination MAC address: %02X:%02X:%02X:%02X:%02X:%02X\n",destination_mac_addr[0],destination_mac_addr[1],destination_mac_addr[2],destination_mac_addr[3],destination_mac_addr[4],destination_mac_addr[5]);
-}
+	//fprintf(stdout,"Source MAC address: %02X:%02X:%02X:%02X:%02X:%02X\n",source_mac_addr[0],source_mac_addr[1],source_mac_addr[2],source_mac_addr[3],source_mac_addr[4],source_mac_addr[5]);
+	//fprintf(stdout,"Destination MAC address: %02X:%02X:%02X:%02X:%02X:%02X\n",destination_mac_addr[0],destination_mac_addr[1],destination_mac_addr[2],destination_mac_addr[3],destination_mac_addr[4],destination_mac_addr[5]);
+    //SA=source_mac_addr[0],source_mac_addr[1],source_mac_addr[2],source_mac_addr[3],source_mac_addr[4],source_mac_addr[5];
+    for(int i = 0; i < 6; ++i)
+    {
+        sprintf(SA + 2*i, "%02X", source_mac_addr[i]);
+        sprintf(DA + 2*i, "%02X", destination_mac_addr[i]);
 
+    }
+    //printf("SA  =%s\n",SA);
+    //printf("SA  =%s",DA);
+
+}
+int cjson_struts_init(){
+    cJSON * pJsonRoot = NULL;
+
+
+    pJsonRoot = cJSON_CreateObject();
+    if(NULL == pJsonRoot)
+    {
+        //error happend here
+        return 2;
+    }
+    //json struct for cjson
+    cJSON_AddStringToObject(pJsonRoot, "AP_MAC", AP_MAC);
+    cJSON_AddStringToObject(pJsonRoot, "DA_MAC", SA);
+    cJSON_AddStringToObject(pJsonRoot, "BSSID_MAC", DA);
+    cJSON_AddNumberToObject(pJsonRoot, "Db", RSSI);
+    cJSON_AddNumberToObject(pJsonRoot, "CH", CH);
+    //cJSON_AddBoolToObject(pJsonRoot, "bool", 1);
+    char * p = cJSON_Print(pJsonRoot);
+
+    if(NULL == p)
+    {
+        //convert json list to string faild, exit
+        //because sub json pSubJson han been add to pJsonRoot, so just delete pJsonRoot, if you also delete pSubJson, it will coredump, and error is : double free
+        cJSON_Delete(pJsonRoot);
+        return 1;
+    }
+    printf("%s\n", p);
+    return 0;
+}
 void my_callback(u_char *args, const struct pcap_pkthdr* header, const u_char* packet)
 {
 	int offset;
@@ -103,19 +163,49 @@ void my_callback(u_char *args, const struct pcap_pkthdr* header, const u_char* p
 	global++;
 	fprintf(stdout,"/*-----------------------------------Pkt #%i-----------------------------------*/\n", global);
 	fflush(stdout);
+    cjson_struts_init();
+
 
 }
+int get_local_mac(char *eth)
+ {
+     int sock;
+     int res;
+     struct ifreq ifr;
+
+     sock = socket(AF_INET, SOCK_STREAM, 0);
+     strcpy(ifr.ifr_name,eth);
+     res = ioctl(sock, SIOCGIFADDR, &ifr);
+
+     //printf("IP: %s\n",inet_ntoa(((struct sockaddr_in*)&ifr.ifr_addr)->sin_addr));
+
+     //strcpy(ifr.ifr_name, "ens331asdfas");
+     res = ioctl(sock, SIOCGIFHWADDR, &ifr);
+
+     int i;
+     //char mac[32];
+     for(i = 0; i < 6; ++i)
+     {
+         sprintf(AP_MAC + 2*i, "%02x", (unsigned char)ifr.ifr_hwaddr.sa_data[i]);
+     }
+     //printf("MAC: %s\n",mac);
+
+     return 0;
+ }
 
 
 int main(int argc,char **argv)
 {
-	printf("Start\n"); 
-	fflush(stdout);
-	int i;
+
+	init_get_config_parameters(); /*init config file read*/
+
+	get_local_mac(loc_Adapter);		/*local adapter card true mac*/
+
+	printf("Start\n");
 	char *dev;
 	char errbuf[PCAP_ERRBUF_SIZE];
 	pcap_t* descr;
-	char filter_exp[] = "type mgt subtype probe-req";	/* The filter expression */
+	char *filter_exp = PKG_TYPE_TMP;	/* The filter expression */
 	const u_char *packet;
 	struct pcap_pkthdr hdr;
 	struct ether_header *eptr;    /* net/ethernet.h */
@@ -125,7 +215,7 @@ int main(int argc,char **argv)
 
 	/* Now get a device */
 	//dev = pcap_lookupdev(errbuf);
-	dev = argv[1];
+	dev = INTERFACE_TMP;
 	printf("Interface: %s\n", dev); 
 
 	if(dev == NULL) {
@@ -147,7 +237,7 @@ int main(int argc,char **argv)
 		return(2);
 	}
     
-    	/* Compile and apply the filter */
+	/* Compile and apply the filter */
 	if (pcap_compile(descr, &fp, filter_exp, 0, netp) == -1) {
 		fprintf(stderr, "Couldn't parse filter %s: %s\n", filter_exp, pcap_geterr(descr));
 		return(2);
@@ -156,7 +246,8 @@ int main(int argc,char **argv)
 		fprintf(stderr, "Couldn't install filter %s: %s\n", filter_exp, pcap_geterr(descr));
 		return(2);
 	}
- 
+	//close config file
+	config_destroy_init();
 	/* loop for callback function */
 	pcap_loop(descr, -1, my_callback, NULL);
 	return 0;
