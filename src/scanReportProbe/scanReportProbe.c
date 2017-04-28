@@ -151,7 +151,9 @@ int cjson_struts_init(){
         cJSON_Delete(pJsonRoot);
         return 1;
     }
-    printf("%s\n", data_fields);
+    //printf("%s ------\n",server_url);
+    curl_send_post();
+    //printf("%s\n", data_fields);
     cJSON_Delete(pJsonRoot);
     free(data_fields);
     return 0;
@@ -164,7 +166,7 @@ void my_callback(u_char *args, const struct pcap_pkthdr* header, const u_char* p
 	if(offset > 0)
 		print_ethernet_header(packet + offset, size);
 	global++;
-	fprintf(stdout,"/*-----------------------------------Pkt #%i-----------------------------------*/\n", global);
+	//fprintf(stdout,"/*-----------------------------------Pkt #%i-----------------------------------*/\n", global);
 	fflush(stdout);
     cjson_struts_init();
 
@@ -205,6 +207,7 @@ int main(int argc,char **argv)
 	get_local_mac(loc_Adapter);		/*local adapter card true mac*/
 
 	printf("Start\n");
+	
 	char *dev;
 	char errbuf[PCAP_ERRBUF_SIZE];
 	pcap_t* descr;
@@ -219,6 +222,9 @@ int main(int argc,char **argv)
 	/* Now get a device */
 	//dev = pcap_lookupdev(errbuf);
 	dev = INTERFACE_TMP;
+	server_url=URL;
+	printf("server_url set: %s\n",server_url);
+	
 	printf("Interface: %s\n", dev); 
 
 	if(dev == NULL) {
@@ -250,8 +256,9 @@ int main(int argc,char **argv)
 		return(2);
 	}
 	//close config file
-	config_destroy_init();
+	
 	/* loop for callback function */
 	pcap_loop(descr, -1, my_callback, NULL);
+	config_destroy_init();
 	return 0;
 }

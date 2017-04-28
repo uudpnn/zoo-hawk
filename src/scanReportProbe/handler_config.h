@@ -1,8 +1,8 @@
 
 int init_get_config_parameters();
 int config_destroy_init();
-char *INTERFACE_TMP;
-char *PKG_TYPE_TMP;
+char *INTERFACE_TMP;    //pcap dev  
+char *PKG_TYPE_TMP;     //pcap filter 
 char *URL;		//URL of the server
 char *CODE;		//Code by which is possible to get the validator
 char *VALIDATOR;	//The local validator

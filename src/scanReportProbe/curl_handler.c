@@ -46,6 +46,7 @@ int curl_send_post()
     /* First set the URL that is about to receive our POST. This URL can
        just as well be a https:// URL if that is what should receive the
        data. */
+
     curl_easy_setopt(curl, CURLOPT_URL, server_url);
     /* Now specify the POST data */
     curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data_fields);
