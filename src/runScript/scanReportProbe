@@ -15,7 +15,7 @@ start(){
 	
 	echo "start $PROCESS"
 	echo "[$(date)] start process">>$LOG_FILE_PATH
-	
+	sleep 10
 	echo "set up wifi antenna"
 	iw phy0 interface add mon0 type monitor
 	echo "[$(date)] create mon0 interface">>$LOG_FILE_PATH
