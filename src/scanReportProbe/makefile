@@ -1,22 +1,24 @@
 # Set the libraries to link
-LFLAGS += -lpcap -pthread
-CFLAGS += -O2 -s
+LFLAGS += -lpcap -pthread -lconfig
+CFLAGS += -O2 -s -lm
 # Debug
 #CFLAGS += -g
 
 # The target
 TARGET = scanReportProbe
 # Object files
-OBJECTS = scanReportProbe.o radiotap.o consumer.o
+OBJECTS = scanReportProbe.o radiotap.o consumer.o cjson.o handler_config.o
 
 all: $(TARGET)
 
 $(TARGET): $(OBJECTS)
-	$(CC) $(CFLAGS) $(OBJECTS) $(LFLAGS) -o $(TARGET)
+	$(CC) -o $(TARGET) $(OBJECTS) $(CFLAGS) $(LFLAGS)
 
 # Dependencies:
 
-radiotap.o: radiotap.h radiotap_iter.h platform.h
+#radiotap.o: radiotap.h radiotap_iter.h platform.h
+
+
 
 
 # This is a predefined rule of makefile, it knows the dependencies and thus can compile the related ".c" files in to ".o"
